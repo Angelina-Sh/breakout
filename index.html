@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+    <title>Breakout</title>
+    <style>
+        * {
+            padding: 0;
+            margin: 0;
+        }
+        div {
+            width: 100%;
+            height: 100vh;
+            background: linear-gradient(#fdf0d5, #669bbc);
+            padding-top: 200px;
+            box-sizing: border-box;
+        }
+        canvas {
+            background: #eee;
+            border-radius: 10px;
+            display: block;
+            margin: 0px auto;
+            box-shadow: 2px 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        button {
+            display: block;
+            margin: 15px auto;
+            background: #0095DD;
+            color: #eee;
+            border: none;
+            border-radius: 5px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            box-shadow: 2px 4px 6px rgba(0, 0, 0, 0.2);
+        }
+        button:active {
+            transform: scale(0.95);
+            box-shadow: 2px 4px 4px rgba(0, 0, 0, 0.2);
+        }
+        #restart_btn {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <canvas id="canvas" width="480" height="320"></canvas>
+        <button id="start_btn">Начать</button>
+        <button id="restart_btn">Попробовать снова</button>
+    </div>
+    <script>
+        let canvas = document.querySelector('canvas')
+        let ctx = canvas.getContext('2d')
+        let start_btn = document.getElementById('start_btn')
+        let restart_btn = document.getElementById('restart_btn')
+
+        let x = canvas.width / 2
+        let y = canvas.height - 30
+        let dx = 2
+        let dy = -2
+        let ballRadius = 10
+        
+        let paddleHeight = 10
+        let paddleWidth = 75
+        let paddleX = (canvas.width - paddleWidth) / 2
+        
+        let rightPressed = false
+        let leftPressed = false
+        
+        let brickRowCount = 5
+        let brickColumnCount = 3
+        let brickWidth = 75
+        let brickHeight = 20
+        let brickPadding = 10
+        let brickOffsetTop = 30
+        let brickOffsetLeft = 30
+        
+        let bricks = []
+        for (let c = 0; c < brickColumnCount; c++) {
+            bricks[c] = []
+            for (let r = 0; r < brickRowCount; r++) {
+                bricks[c][r] = {x: 0, y: 0, status: 1}
+            }
+        }
+
+        let score = 0
+        let lives = 3
+        let progress = true
+
+        
+        function startText() {
+            ctx.font = '36px Arial'
+            ctx.textAlign = 'center'
+            ctx.fillStyle = '#0095DD'
+            ctx.fillText('Что бы начать игру,', 250, 150)
+            ctx.fillText(' нажмите на кнопку...', 250, 200)
+        }
+        function winText() {
+            ctx.font = '36px Arial'
+            ctx.textAlign = 'center'
+            ctx.fillStyle = '#0095DD'
+            ctx.fillText('Поздравляем с победой!', 250, 170)
+        }
+        function loseText() {
+            ctx.font = '36px Arial'
+            ctx.textAlign = 'center'
+            ctx.fillStyle = '#0095DD'
+            ctx.fillText('Жизни закончились, ', 250, 150)
+            ctx.fillText('а вы проиграли:(', 250, 200)
+        }
+        function drawBall() {
+            ctx.beginPath()
+            ctx.arc(x, y, ballRadius, 0, Math.PI * 2)
+            ctx.fillStyle = '#0095DD'
+            ctx.fill()
+            ctx.closePath()
+        }
+        function drawPaddle() {
+            ctx.beginPath()
+            ctx.rect(paddleX, canvas.height - paddleHeight, paddleWidth, paddleHeight)
+            ctx.fillStyle = '#0095DD'
+            ctx.fill()
+            ctx.closePath()
+        }
+        function drawBricks() {
+            for (let c = 0; c < brickColumnCount; c++) {
+                for (let r = 0; r < brickRowCount; r++) {
+                    if (bricks[c][r].status == 1) {
+                        let brickX = (r * (brickWidth + brickPadding)) + brickOffsetLeft
+                        let brickY = (c * (brickHeight + brickPadding)) + brickOffsetTop
+                        bricks[c][r].x = brickX
+                        bricks[c][r].y = brickY
+                        ctx.beginPath()
+                        ctx.rect(brickX, brickY, brickWidth, brickHeight)
+                        ctx.fillStyle = '#0095DD'
+                        ctx.fill()
+                        ctx.closePath()
+                    }
+                }
+            }
+        }
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height)
+            if (progress) {
+            drawBricks()
+            drawBall()
+            drawPaddle()
+            drawScore()
+            drawLives()
+            collisionDetection()
+            x += dx
+            y += dy
+            if (x + dx > canvas.width - ballRadius || x + dx < ballRadius) {
+                dx = -dx
+            }
+            if (y + dy < ballRadius) {
+                dy = -dy
+            } else if (y + dy > canvas.height - ballRadius) {
+                if (x > paddleX && x < paddleX + paddleWidth) {
+                    dy = -dy
+                } else {
+                    lives--
+                    if (!lives) {
+                        progress = false
+                    } else {
+                        x = canvas.width / 2
+                        y = canvas.height - 30
+                        dx = 2
+                        dy = -2
+                        paddleX = (canvas.width - paddleWidth) / 2
+                    }
+                }
+            }
+            if (rightPressed && paddleX < canvas.width - paddleWidth) {
+                paddleX += 7
+            } else if (leftPressed && paddleX > 0) {
+                paddleX -= 7
+            }
+            } else {
+                restart_btn.style.display = 'block'
+                if (score == brickRowCount * brickColumnCount) {
+                    winText()
+                } else {
+                    loseText()
+                }
+            }
+        }
+
+        document.addEventListener('keydown', keyDownHandler, false)
+        document.addEventListener('keyup', keyUpHandler, false)
+        document.addEventListener('mousemove', mouseMoveHandler, false)
+
+        function mouseMoveHandler(e) {
+            let relativeX = e.clientX - canvas.offsetLeft
+            if (relativeX > 0 && relativeX < canvas.width) {
+                paddleX = relativeX - paddleWidth / 2
+            }
+        }
+        function keyDownHandler(e) {
+            if (e.keyCode == 39) {
+                rightPressed = true
+            } else if (e.keyCode == 37) {
+                leftPressed = true
+            }
+        }
+        function keyUpHandler(e) {
+            if (e.keyCode == 39) {
+                rightPressed = false
+            } else if (e.keyCode == 37) {
+                leftPressed = false
+            }
+        }
+        function collisionDetection() {
+            for (let c = 0; c < brickColumnCount; c++) {
+                for (let r = 0; r < brickRowCount; r++) {
+                    let b = bricks[c][r]
+                    if (b.status == 1) {
+                        if (x > b.x && x < b.x + brickWidth && y > b.y && y < b.y + brickHeight) {
+                            dy = -dy
+                            b.status = 0
+                            score++
+                            if (score == brickRowCount * brickColumnCount) {
+                                progress = false
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        function drawScore() {
+            ctx.font = '16px Arial'
+            ctx.textAlign = 'left'
+            ctx.fillStyle = '#0095DD'
+            ctx.fillText('Счёт: ' + score, 8, 20)
+        }
+        function drawLives() {
+            ctx.font = '16px Arial'
+            ctx.textAlign = 'left'
+            ctx.fillStyle = '#0095DD'
+            ctx.fillText('Жизни: ' + lives, 400, 20)
+        }
+
+        startText()
+
+        start_btn.addEventListener('click', function() {
+            let interval = setInterval(draw, 10)
+            start_btn.style.display = 'none'
+        })
+        restart_btn.addEventListener('click', function() {
+            location.reload()
+        })
+    </script>
+</body>
+</html>
